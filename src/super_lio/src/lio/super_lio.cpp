@@ -312,6 +312,13 @@ void SuperLIO::ProcessCaceMap(){
 
 void SuperLIO::saveMap(){
   if(!g_save_map) return;
+  std::error_code ec;
+  std::filesystem::create_directories(g_save_map_dir, ec);
+  if (ec) {
+    LOG(ERROR) << RED << " ---> Failed to create map directory: "
+               << g_save_map_dir << " error: " << ec.message() << RESET;
+    return;
+  }
   if(g_pcd_save_interval > 0){
     LOG(INFO) << YELLOW << " ---> Saving last cace ... " << RESET;
     if (point_map_->size() > 0) {

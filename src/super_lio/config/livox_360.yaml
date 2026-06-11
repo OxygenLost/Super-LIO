@@ -9,6 +9,7 @@
 
     lio.ros.lidar_topic: "/livox/lidar"
     lio.ros.imu_topic: "/livox/imu"
+    lio.ros.bagfile: ""
 
     lio.sensor.lidar_type: 1
     lio.sensor.blind: 2.0

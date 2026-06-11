@@ -40,6 +40,9 @@ void LoadParamFromRos(rclcpp::Node& node)
   node.declare_parameter<std::string>("lio.ros.imu_topic", "/imu");
   node.get_parameter("lio.ros.imu_topic", g_imu_topic);
 
+  node.declare_parameter<std::string>("lio.ros.bagfile", "");
+  node.get_parameter("lio.ros.bagfile", g_bagfile);
+
   node.declare_parameter<int>("lio.sensor.lidar_type", 0);
   node.get_parameter("lio.sensor.lidar_type", g_lidar_type);
 
@@ -270,6 +273,12 @@ inline builtin_interfaces::msg::Time toRosTime(double t_sec)
 }
 
 
+inline bool rosContextOk()
+{
+  return rclcpp::ok();
+}
+
+
 ROSWrapper::ROSWrapper(const rclcpp::NodeOptions& options)
 : rclcpp::Node("super_lio", options)
 {
@@ -344,7 +353,34 @@ void ROSWrapper::setupIO(){
 }
 
 
+void ROSWrapper::feedImu(const sensor_msgs::msg::Imu& msg){
+  imuHandler(std::make_shared<sensor_msgs::msg::Imu>(msg));
+}
+
+
+void ROSWrapper::feedLivox(const livox_ros_driver2::msg::CustomMsg& msg){
+  livoxHandler(std::make_shared<livox_ros_driver2::msg::CustomMsg>(msg));
+}
+
+
+bool ROSWrapper::hasSynchronizedMeasure() const{
+  if (lidar_buffer_.empty() || imu_buffer_.empty()) {
+    return false;
+  }
+
+  const auto& lidar = lidar_buffer_.front();
+  if (last_timestamp_lidar_ > lidar.end_time) {
+    return true;
+  }
+
+  return last_timestamp_imu_ >= lidar.end_time;
+}
+
+
 void ROSWrapper::imuHandler(const sensor_msgs::msg::Imu::SharedPtr msg){
+  if (!rosContextOk()) {
+    return;
+  }
   IMUData data;
   data.secs = stampToSec(msg->header.stamp);
   data.acc  = V3(msg->linear_acceleration.x,
@@ -566,6 +602,9 @@ bool ROSWrapper::sync_measure(MeasureGroup& meas){
 
 
 void ROSWrapper::pub_odom(const NavState& state){
+  if (!rosContextOk()) {
+    return;
+  }
   nav_msgs::msg::Odometry odom;
   odom.header.frame_id = "world";
 
@@ -642,6 +681,9 @@ void ROSWrapper::pub_odom(const NavState& state){
 
 
 void ROSWrapper::pub_cloud_world(const CloudPtr& pc, double time){
+  if (!rosContextOk()) {
+    return;
+  }
   sensor_msgs::msg::PointCloud2 cloud;
   pcl::toROSMsg(*pc, cloud);
   cloud.header.frame_id = "world";
@@ -651,6 +693,9 @@ void ROSWrapper::pub_cloud_world(const CloudPtr& pc, double time){
 
 
 void ROSWrapper::pub_cloud2planner(const CloudPtr& pc, double time){
+  if (!rosContextOk()) {
+    return;
+  }
   static auto pub_cloud2robot_ =
     this->create_publisher<sensor_msgs::msg::PointCloud2>(
         "/lio/robo/cloud_world", 10);
@@ -665,6 +710,9 @@ void ROSWrapper::pub_cloud2planner(const CloudPtr& pc, double time){
 void ROSWrapper::pub_cloud_body_pose(const CloudPtr& pc, 
   const NavState& state)
 {
+  if (!rosContextOk()) {
+    return;
+  }
   static auto pub_cloud_body_pose_ =
     this->create_publisher<super_lio::msg::CloudPose>(
         "/lio/body/cloud_pose", 10);
@@ -687,6 +735,9 @@ void ROSWrapper::pub_cloud_body_pose(const CloudPtr& pc,
 void ROSWrapper::pub_cloud_world_pose(const CloudPtr& pc, 
    const NavState& state)
 {
+  if (!rosContextOk()) {
+    return;
+  }
   static auto pub_cloud_world_pose_ =
     this->create_publisher<super_lio::msg::CloudPose>(
         "/lio/world/cloud_pose", 10);
@@ -708,6 +759,9 @@ void ROSWrapper::pub_cloud_world_pose(const CloudPtr& pc,
 void ROSWrapper::pub_processing_time(double time, 
   double current_time, double mean_time, double std_time)
 {
+  if (!rosContextOk()) {
+    return;
+  }
   static auto pub_processing_time_ =
     this->create_publisher<geometry_msgs::msg::PoseStamped>(
         "/lio/processing_time", 10);
@@ -721,6 +775,9 @@ void ROSWrapper::pub_processing_time(double time,
 
 
 void ROSWrapper::set_global_map(const BASIC::CloudPtr& global_map){
+  if (!rosContextOk()) {
+    return;
+  }
   pcl::toROSMsg(*global_map, global_map_msg_);
   global_map_msg_.header.frame_id = "world";
 
@@ -732,6 +789,9 @@ void ROSWrapper::set_global_map(const BASIC::CloudPtr& global_map){
     this->create_wall_timer(
       std::chrono::seconds(1),
       [this]() {
+        if (!rosContextOk()) {
+          return;
+        }
         static int count = -1;
         static int publish_interval = 1;
 

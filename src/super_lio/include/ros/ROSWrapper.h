@@ -65,6 +65,10 @@ public:
     last_timestamp_lidar_ = -1.0;
   }
 
+  void feedImu(const sensor_msgs::msg::Imu& msg);
+  void feedLivox(const livox_ros_driver2::msg::CustomMsg& msg);
+  bool hasSynchronizedMeasure() const;
+
   void pub_odom(const NavState&);
   void pub_cloud_world(const BASIC::CloudPtr& pc, double time);
   void pub_cloud2planner(const BASIC::CloudPtr& pc, double time);

@@ -23,6 +23,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(livox_ros_driver2 REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
 
 find_package(Eigen3 REQUIRED NO_MODULE)
 find_package(PCL REQUIRED)
@@ -77,6 +78,9 @@ target_link_libraries(lio PUBLIC
 )
 
 add_executable(super_lio_node src/apps/super_lio_node.cpp)
+ament_target_dependencies(super_lio_node
+  rosbag2_cpp
+)
 target_link_libraries(super_lio_node
   lio
   ${cpp_typesupport_target}
